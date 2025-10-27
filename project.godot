@@ -11,5 +11,5 @@ config_version=5
 [application]
 
 config/name="Viking_Raiders"
-config/features=PackedStringArray("4.4", "Forward Plus")
+config/features=PackedStringArray("4.5")
 config/icon="res://icon.svg"
