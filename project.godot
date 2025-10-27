@@ -12,4 +12,7 @@ config_version=5
 
 config/name="Viking_Raiders"
 config/features=PackedStringArray("4.5")
-config/icon="res://icon.svg"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/GodotAiSuite/plugin.cfg")
