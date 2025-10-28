@@ -14,6 +14,12 @@ config/name="Viking_Raiders"
 run/main_scene="uid://byd7quc0toid2"
 config/features=PackedStringArray("4.5")
 
+[autoload]
+
+EconomyManager="*res://systems/EconomyManager.gd"
+GameStateManager="*res://systems/GameStateManager.gd"
+JarlManager="*res://systems/JarlManager.gd"
+
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/GodotAiSuite/plugin.cfg")

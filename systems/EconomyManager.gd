@@ -1,43 +1,43 @@
 # res://systems/EconomyManager.gd
-class_name EconomyManager extends Node
+extends Node
 
-## Manages Gold, Renown, Loot conversion , and Abstracted Raid resolution[cite: 18].
-
+## Manages Gold, Renown, Loot conversion , and Abstracted Raid resolution.
 signal gold_updated(new_gold: int)
 signal renown_updated(new_renown: int)
 ## Emitted after a raid is resolved, carrying a summary for the UI.
 signal raid_completed(raid_summary: Dictionary)
 
 # --- Core GDD Values ---
-const BASE_RSC: int = 50 [cite: 25]
-const BUDGET_SCALE_GOLD_PER_PERCENT: int = 10 [cite: 27]
-const MAX_BUDGET_INVESTMENT: int = 100 [cite: 27]
-const LOOT_TO_GOLD_CONVERSION: int = 1 [cite: 26]
-const THRALL_TO_GOLD_CONVERSION: int = 10 [cite: 27]
+const BASE_RSC: int = 50
+const BUDGET_SCALE_GOLD_PER_PERCENT: int = 10
+const MAX_BUDGET_INVESTMENT: int = 100
+const LOOT_TO_GOLD_CONVERSION: int = 1
+const THRALL_TO_GOLD_CONVERSION: int = 10
 
-# GDD  Success/Failure thresholds
+# GDD Success/Failure thresholds
 const RSC_SUCCESS_THRESHOLD: int = 50
 const RSC_FAILURE_THRESHOLD: int = 25
 
-## PROVISIONAL: GDD is silent on base Renown. Added to make Renown-modifying traits  functional.
+## PROVISIONAL: GDD is silent on base Renown.
+## Added to make Renown-modifying traits functional.
 const BASE_RENOWN_PER_RAID: int = 5
 
 # --- Player Resources ---
-var gold: int = 300: [cite: 25]
+var gold: int = 300:
 	set(value):
 		if gold != value:
 			gold = value
 			gold_updated.emit(gold)
 
-var renown: int = 50: [cite: 25]
+var renown: int = 50:
 	set(value):
 		if renown != value:
 			renown = value
 			renown_updated.emit(renown)
 
 # --- Singleton References ---
-var jarl_manager: JarlManager
-var game_state_manager: GameStateManager
+var jarl_manager
+var game_state_manager
 
 func _ready() -> void:
 	# Store singleton references for performance.
@@ -50,33 +50,59 @@ func _ready() -> void:
 	if not game_state_manager:
 		push_error("EconomyManager: GameStateManager singleton not found. Ensure it is an Autoload.")
 
-## Calculates the RSC bonus from Gold investment[cite: 19, 27].
+## Calculates the RSC bonus from Gold investment.
 func calculate_budget_bonus(investment: int) -> int:
 	var clamped_investment = clamp(investment, 0, MAX_BUDGET_INVESTMENT)
 	var bonus = clamped_investment / BUDGET_SCALE_GOLD_PER_PERCENT
 	return bonus
 
-## The core function for resolving the MVP's Abstracted Raid[cite: 18].
+
+# --- NEW PUBLIC FUNCTION ---
+## Calculates the RSC for UI preview purposes *without* executing the raid.
+## This contains the core formula from the GDD.
+func calculate_rsc_preview(target_fylki: FylkiProfile, budget_investment: int) -> int:
+	if not jarl_manager:
+		push_warning("EconomyManager: JarlManager not ready, cannot calculate RSC preview.")
+		return BASE_RSC
+
+	# 1. Calculate all components of the RSC formula
+	var budget_bonus: int = calculate_budget_bonus(budget_investment)
+	var trait_bonus: int = jarl_manager.get_total_rsc_modifier_from_traits()
+	
+	# Fylki penalty is stored as a negative int (e.g., -25)
+	var fylki_penalty: int = target_fylki.levy_penalty_rsc
+	
+	# GDD Formula: (Base + Budget + Trait) - (Fylki Penalty)
+	var total_rsc: int = BASE_RSC + budget_bonus + trait_bonus + fylki_penalty
+	
+	# 2. Clamp the final result between 0 and 100
+	total_rsc = clamp(total_rsc, 0, 100)
+	
+	return total_rsc
+
+
+## The core function for resolving the MVP's Abstracted Raid.
 func execute_abstracted_raid(target_fylki: FylkiProfile, budget_investment: int) -> Dictionary:
 	if not jarl_manager or not game_state_manager:
 		push_error("EconomyManager: Missing core singletons. Aborting raid.")
 		return {}
 
+	# --- MODIFICATION ---
+	# Tell the GameStateManager we are *ENTERING* the Summer phase.
+	# This is the "Abstracted Raid" itself.
+	game_state_manager.switch_phase(GameStateManager.GamePhase.SUMMER)
+
 	if budget_investment > gold:
 		print("EconomyManager: Not enough gold for raid budget. Aborting.")
+		# We must still return to WINTER, or the game is stuck
+		game_state_manager.switch_phase(GameStateManager.GamePhase.WINTER)
 		return {}
 
 	# 1. Deduct cost
 	self.gold -= budget_investment
 	
 	# 2. Calculate RSC 
-	var budget_bonus: int = calculate_budget_bonus(budget_investment)
-	var trait_bonus: int = jarl_manager.get_total_rsc_modifier_from_traits()
-	var fylki_penalty: int = target_fylki.levy_penalty_rsc [cite: 50]
-	
-	# GDD Formula: (Base + Budget + Trait) - (Fylki Penalty)
-	var total_rsc: int = (BASE_RSC + budget_bonus + trait_bonus) - fylki_penalty
-	total_rsc = clamp(total_rsc, 0, 100)
+	var total_rsc: int = calculate_rsc_preview(target_fylki, budget_investment)
 
 	# 3. Determine Outcome & Apply Stress 
 	var outcome: String = "Neutral"
@@ -85,32 +111,29 @@ func execute_abstracted_raid(target_fylki: FylkiProfile, budget_investment: int)
 	if total_rsc >= RSC_SUCCESS_THRESHOLD:
 		outcome = "Success"
 		loot_multiplier = 1.0
-		jarl_manager.apply_raid_result(true) # Apply stress reduction 
+		jarl_manager.apply_raid_result(true) # Apply stress reduction
 	elif total_rsc < RSC_FAILURE_THRESHOLD:
 		outcome = "Failure"
 		loot_multiplier = 0.0
-		jarl_manager.apply_raid_result(false) # Apply stress increase 
+		jarl_manager.apply_raid_result(false) # Apply stress increase
 	else:
-		# Neutral outcome (25-49 RSC). Per GDD, no stress change.
-		# PROVISIONAL: GDD is silent on Neutral loot. Defaulting to 50%.
 		outcome = "Neutral"
-		loot_multiplier = 0.5 
+		loot_multiplier = 0.5
 
 	# 4. Calculate Loot & Thralls
-	# We scale rewards based on the RSC (a 51% success is worse than a 90%)
 	var rsc_lerp_factor = float(total_rsc) / 100.0
-	var base_loot = lerp(0.0, float(target_fylki.max_loot_potential), rsc_lerp_factor) [cite: 51]
-	var base_thralls = lerp(float(target_fylki.min_thralls_potential), float(target_fylki.max_thralls_potential), rsc_lerp_factor) [cite: 51, 52]
+	var base_loot = lerp(0.0, float(target_fylki.max_loot_potential), rsc_lerp_factor)
+	var base_thralls = lerp(float(target_fylki.min_thralls_potential), float(target_fylki.max_thralls_potential), rsc_lerp_factor)
 	var base_renown = float(BASE_RENOWN_PER_RAID)
 
-	# 5. Apply Jarl's Secondary Trait Modifiers [cite: 59]
+	# 5. Apply Jarl's Secondary Trait Modifiers
 	var loot_mod: float = 1.0
 	var thrall_mod: float = 1.0
 	var renown_mod: float = 1.0
 
-	for trait in jarl_manager.jarl_traits:
-		var effect_percent = float(trait.secondary_effect_percent) / 100.0 [cite: 60]
-		match trait.secondary_effect_type:
+	for jarl_trait in jarl_manager.jarl_traits:
+		var effect_percent = float(jarl_trait.secondary_effect_percent) / 100.0
+		match jarl_trait.secondary_effect_type:
 			JarlTrait.SecondaryEffectType.LOOT:
 				loot_mod += effect_percent
 			JarlTrait.SecondaryEffectType.THRALLS:
@@ -124,7 +147,6 @@ func execute_abstracted_raid(target_fylki: FylkiProfile, budget_investment: int)
 
 	# 6. Add Final Resources
 	self.gold += final_loot * LOOT_TO_GOLD_CONVERSION
-	# GDD [cite: 27] says Gold OR Renown. Defaulting to Gold for MVP.
 	self.gold += final_thralls * THRALL_TO_GOLD_CONVERSION 
 	self.renown += final_renown
 
@@ -142,7 +164,10 @@ func execute_abstracted_raid(target_fylki: FylkiProfile, budget_investment: int)
 	raid_completed.emit(summary)
 	print("Raid completed. Outcome: %s (RSC: %d)" % [outcome, total_rsc])
 	
-	# Tell the GameStateManager to return to the management phase
+	# --- MODIFICATION ---
+	# Tell the GameStateManager to *RETURN* to the Winter phase.
+	# Now the state will be SUMMER, and the target will be WINTER,
+	# so the scene reload will work.
 	game_state_manager.switch_phase(GameStateManager.GamePhase.WINTER)
 	
 	return summary

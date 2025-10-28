@@ -1,4 +1,5 @@
-class_name GameStateManager extends Node
+# res://systems/GameStateManager.gd
+extends Node
 
 ## Enum for the two distinct phases of the hybrid game.
 enum GamePhase {
@@ -12,12 +13,18 @@ signal game_started()
 
 var current_phase: GamePhase = GamePhase.WINTER
 
-# --- Scene Paths (Provisional and Configurable Defaults) ---
-# NOTE: These paths use safe defaults based on the GDD structure.
-const WINTER_SCENE_PATH: String = "res://scenes/gs_winter/WinterScene.tscn"
-const SUMMER_SCENE_PATH: String = "res://scenes/rts_summer/SummerScene.tscn"
+# --- Scene Registry (Replaces string paths) ---
+const SCENE_REGISTRY_PATH: String = "res://resources/data/scene_registry.tres"
+var scene_registry: SceneRegistry
 
 func _ready() -> void:
+	# Load the scene registry resource.
+	scene_registry = load(SCENE_REGISTRY_PATH)
+	if not scene_registry:
+		push_error("GameStateManager: FAILED TO LOAD SCENE REGISTRY. Check path: %s" % SCENE_REGISTRY_PATH)
+		get_tree().quit() # This is a fatal error, we can't run.
+		return
+
 	# Use call_deferred to ensure the scene tree is fully ready before loading the first scene.
 	call_deferred("start_game")
 
@@ -25,35 +32,49 @@ func _ready() -> void:
 func start_game() -> void:
 	print("GameStateManager: Initializing game...")
 	
-	# Load the Winter Scene as the entry point for the MVP loop.
-	if load(WINTER_SCENE_PATH):
-		get_tree().change_scene_to_file(WINTER_SCENE_PATH)
+	# Load the Winter Scene from our registry.
+	if scene_registry.winter_scene:
+		# Use change_scene_to_packed, which takes the PackedScene object directly.
+		get_tree().change_scene_to_packed(scene_registry.winter_scene)
 		current_phase = GamePhase.WINTER
 		game_started.emit()
 		print("GameStateManager: Game started, currently in WINTER phase.")
 	else:
-		# If the Winter Scene is missing, print an error for immediate debugging.
-		push_error("GameStateManager: Failed to load Winter Scene. Check path: ", WINTER_SCENE_PATH)
+		# This error is now much more specific.
+		push_error("GameStateManager: Winter Scene is not assigned in scene_registry.tres!")
 
 ## Switches the game between the Winter and Summer phases.
 func switch_phase(target_phase: GamePhase) -> void:
-	if current_phase == target_phase:
-		print("GameStateManager: Already in phase ", target_phase)
-		return
-
-	current_phase = target_phase
+	# --- MODIFICATION ---
+	# We've changed the logic here to allow the SUMMER -> WINTER transition.
 	
-	match current_phase:
+	if current_phase == target_phase:
+		# It's fine to call WINTER -> WINTER, but we don't want to log an error.
+		# We only care if we try to enter a state we're already in.
+		if target_phase == GamePhase.SUMMER:
+			print("GameStateManager: Already in SUMMER phase.")
+			return
+		elif target_phase == GamePhase.WINTER:
+			# This is the "Already in phase 0" log. We can silence it.
+			# print("GameStateManager: Already in WINTER phase.")
+			pass
+		
+	# Only set the phase if it's a real change.
+	if current_phase != target_phase:
+		current_phase = target_phase
+	
+	match target_phase:
 		GamePhase.SUMMER:
-			# NOTE: For the MVP, the 'Summer' scene is the Abstracted Raid screen.
-			# We will not load a new scene here yet. The Raid Planning screen (in the Winter Scene)
-			# will call EconomyManager.execute_raid() and then call switch_phase back to WINTER
-			# once the raid resolution is complete.
+			# This is the "Abstracted Raid" phase.
+			# As per the GDD, we don't load a scene. We just log.
+			print("GameStateManager: Entering SUMMER phase (Abstracted Raid)")
 			pass 
 			
 		GamePhase.WINTER:
 			print("GameStateManager: Switching back to the WINTER phase (Management)")
-			get_tree().change_scene_to_file(WINTER_SCENE_PATH)
+			if scene_registry.winter_scene:
+				get_tree().change_scene_to_packed(scene_registry.winter_scene)
+			else:
+				push_error("GameStateManager: Winter Scene is not assigned in scene_registry.tres!")
 	
-	# FIX IMPLEMENTED: Emitting the target_phase argument is critical for listeners.
 	phase_changed.emit(target_phase)

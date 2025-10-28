@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="SceneRegistry" load_steps=3 format=3 uid="uid://dw2m853d4oi0b"]
+
+[ext_resource type="Script" uid="uid://cccof3n2eapn6" path="res://scripts/utilities/SceneRegistry.gd" id="1_xdg84"]
+[ext_resource type="PackedScene" uid="uid://7tecdorh4w8s" path="res://scenes/gs_winter/winter_scene.tscn" id="2_plwww"]
+
+[resource]
+script = ExtResource("1_xdg84")
+winter_scene = ExtResource("2_plwww")
+metadata/_custom_type_script = "uid://cccof3n2eapn6"

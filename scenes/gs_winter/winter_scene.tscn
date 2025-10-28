@@ -1,0 +1,73 @@
+[gd_scene load_steps=2 format=3 uid="uid://7tecdorh4w8s"]
+
+[ext_resource type="Script" uid="uid://c27iibe28qx5x" path="res://scenes/gs_winter/WinterScene.gd" id="1_wfdcv"]
+
+[node name="WinterScene" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_wfdcv")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+
+[node name="HeaderPanel" type="PanelContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/HeaderPanel"]
+layout_mode = 2
+
+[node name="GoldLabel" type="Label" parent="MarginContainer/VBoxContainer/HeaderPanel/HBoxContainer"]
+layout_mode = 2
+
+[node name="RenownLabel" type="Label" parent="MarginContainer/VBoxContainer/HeaderPanel/HBoxContainer"]
+layout_mode = 2
+
+[node name="JarlPanel" type="PanelContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/JarlPanel"]
+layout_mode = 2
+
+[node name="JarlNameLabel" type="Label" parent="MarginContainer/VBoxContainer/JarlPanel/HBoxContainer"]
+layout_mode = 2
+text = "Jarl Haral Bluetooth"
+
+[node name="JarlStressLabel" type="Label" parent="MarginContainer/VBoxContainer/JarlPanel/HBoxContainer"]
+layout_mode = 2
+text = "Stress: 25 (Calm)"
+
+[node name="PlanningVBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/PlanningVBox"]
+layout_mode = 2
+text = "Select Target Fylki"
+
+[node name="FylkiSelect" type="OptionButton" parent="MarginContainer/VBoxContainer/PlanningVBox"]
+layout_mode = 2
+
+[node name="Label2" type="Label" parent="MarginContainer/VBoxContainer/PlanningVBox"]
+layout_mode = 2
+text = "Select Raid Budget (0-100 Gold)"
+
+[node name="BudgetInput" type="SpinBox" parent="MarginContainer/VBoxContainer/PlanningVBox"]
+layout_mode = 2
+step = 10.0
+
+[node name="FooterVBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="RSCDisplay" type="Label" parent="MarginContainer/VBoxContainer/FooterVBox"]
+layout_mode = 2
+text = "Raid Success Chance: --%"
+horizontal_alignment = 1
+
+[node name="LaunchRaidButton" type="Button" parent="MarginContainer/VBoxContainer/FooterVBox"]
+layout_mode = 2
+text = "Launch Raid"
