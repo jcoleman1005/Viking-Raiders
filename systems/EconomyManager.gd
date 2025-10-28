@@ -1,139 +1,148 @@
+# res://systems/EconomyManager.gd
 class_name EconomyManager extends Node
 
-## Manages Gold, Renown, and Raid calculations.
+## Manages Gold, Renown, Loot conversion , and Abstracted Raid resolution[cite: 18].
 
-# --- Signals ---
-## Emitted when the player's core resources change.
-signal gold_changed(new_gold: int)
-signal renown_changed(new_renown: int)
+signal gold_updated(new_gold: int)
+signal renown_updated(new_renown: int)
+## Emitted after a raid is resolved, carrying a summary for the UI.
+signal raid_completed(raid_summary: Dictionary)
 
-# --- Core Resource Variables ---
-var gold: int = 300:
+# --- Core GDD Values ---
+const BASE_RSC: int = 50 [cite: 25]
+const BUDGET_SCALE_GOLD_PER_PERCENT: int = 10 [cite: 27]
+const MAX_BUDGET_INVESTMENT: int = 100 [cite: 27]
+const LOOT_TO_GOLD_CONVERSION: int = 1 [cite: 26]
+const THRALL_TO_GOLD_CONVERSION: int = 10 [cite: 27]
+
+# GDD  Success/Failure thresholds
+const RSC_SUCCESS_THRESHOLD: int = 50
+const RSC_FAILURE_THRESHOLD: int = 25
+
+## PROVISIONAL: GDD is silent on base Renown. Added to make Renown-modifying traits  functional.
+const BASE_RENOWN_PER_RAID: int = 5
+
+# --- Player Resources ---
+var gold: int = 300: [cite: 25]
 	set(value):
 		if gold != value:
 			gold = value
-			gold_changed.emit(gold)
+			gold_updated.emit(gold)
 
-var renown: int = 50:
+var renown: int = 50: [cite: 25]
 	set(value):
 		if renown != value:
 			renown = value
-			renown_changed.emit(renown)
+			renown_updated.emit(renown)
 
-# --- GDD Constants ---
-const BASE_RSC: int = 50 #
-const LOOT_TO_GOLD_CONVERSION: int = 1 #
-const THRALL_TO_GOLD_VALUE: int = 10 #
-const THRALL_TO_RENOWN_VALUE: int = 10 #
-
-# --- System References ---
-# We will connect these in the main scene or a bootstrapper.
+# --- Singleton References ---
 var jarl_manager: JarlManager
 var game_state_manager: GameStateManager
 
-# --- Public API ---
-
-## Calculates the Raid Success Chance (RSC) for the MVP abstracted raid.
-## This is the core formula from the GDD.
-func calculate_rsc(fylki_profile: FylkiProfile, raid_budget: int, jarl_traits: Array) -> int:
+func _ready() -> void:
+	# Store singleton references for performance.
+	# This requires JarlManager and GameStateManager to be registered as Autoloads.
+	jarl_manager = get_node_or_null("/root/JarlManager")
+	game_state_manager = get_node_or_null("/root/GameStateManager")
 	
-	# 1. Base + Budget Bonus
-	var rsc: int = BASE_RSC + calculate_budget_bonus(raid_budget)
-	
-	# 2. Trait Bonus
-	var trait_bonus: int = 0
-	for trait in jarl_traits:
-		if trait is JarlTrait:
-			trait_bonus += trait.rsc_modifier_percent #
-	rsc += trait_bonus
-	
-	# 3. Fylki Penalty
-	rsc += fylki_profile.levy_penalty_rsc #
-	
-	# 4. Alliance Modifier (Future Scope, placeholder for now)
-	# rsc += alliance_modifier 
-	
-	return clamp(rsc, 0, 100)
-
-## Executes the abstracted raid, calculates results, and updates resources.
-## This function will be called from the Raid Planning UI.
-func execute_abstracted_raid(fylki_profile: FylkiProfile, raid_budget: int, jarl_traits: Array) -> void:
 	if not jarl_manager:
-		push_error("EconomyManager: JarlManager reference is not set!")
-		return
+		push_error("EconomyManager: JarlManager singleton not found. Ensure it is an Autoload.")
+	if not game_state_manager:
+		push_error("EconomyManager: GameStateManager singleton not found. Ensure it is an Autoload.")
 
-	# 1. Pay the budget cost
-	self.gold -= raid_budget
+## Calculates the RSC bonus from Gold investment[cite: 19, 27].
+func calculate_budget_bonus(investment: int) -> int:
+	var clamped_investment = clamp(investment, 0, MAX_BUDGET_INVESTMENT)
+	var bonus = clamped_investment / BUDGET_SCALE_GOLD_PER_PERCENT
+	return bonus
+
+## The core function for resolving the MVP's Abstracted Raid[cite: 18].
+func execute_abstracted_raid(target_fylki: FylkiProfile, budget_investment: int) -> Dictionary:
+	if not jarl_manager or not game_state_manager:
+		push_error("EconomyManager: Missing core singletons. Aborting raid.")
+		return {}
+
+	if budget_investment > gold:
+		print("EconomyManager: Not enough gold for raid budget. Aborting.")
+		return {}
+
+	# 1. Deduct cost
+	self.gold -= budget_investment
 	
-	# 2. Calculate Success
-	var rsc: int = calculate_rsc(fylki_profile, raid_budget, jarl_traits)
-	var is_success: bool = randi_range(1, 100) <= rsc
+	# 2. Calculate RSC 
+	var budget_bonus: int = calculate_budget_bonus(budget_investment)
+	var trait_bonus: int = jarl_manager.get_total_rsc_modifier_from_traits()
+	var fylki_penalty: int = target_fylki.levy_penalty_rsc [cite: 50]
 	
-	var loot_won: int = 0
-	var thralls_won: int = 0
-	var renown_won: int = 0 # Placeholder for now, GDD doesn't specify base renown gain
+	# GDD Formula: (Base + Budget + Trait) - (Fylki Penalty)
+	var total_rsc: int = (BASE_RSC + budget_bonus + trait_bonus) - fylki_penalty
+	total_rsc = clamp(total_rsc, 0, 100)
 
-	# 3. Process Results
-	if is_success:
-		print("RAID SUCCESSFUL! (RSC: %d)" % rsc)
-		
-		# Calculate winnings based on Fylki potential
-		loot_won = fylki_profile.max_loot_potential #
-		thralls_won = randi_range(fylki_profile.min_thralls_potential, fylki_profile.max_thralls_potential) #
-		
-		# Apply Jarl Trait modifiers for secondary effects
-		for trait in jarl_traits:
-			if trait is JarlTrait:
-				match trait.secondary_effect_type:
-					JarlTrait.SecondaryEffectType.LOOT:
-						loot_won += int(loot_won * (trait.secondary_effect_percent / 100.0))
-					JarlTrait.SecondaryEffectType.THRALLS:
-						thralls_won += int(thralls_won * (trait.secondary_effect_percent / 100.0))
-					JarlTrait.SecondaryEffectType.RENOWN:
-						renown_won += int(renown_won * (trait.secondary_effect_percent / 100.0))
-
-		# Convert Loot to Gold
-		self.gold += (loot_won * LOOT_TO_GOLD_CONVERSION) #
-		
-		# NOTE: GDD states Thralls can be Gold OR Renown.
-		# For the MVP, I'll default to Gold. We can add a player choice later.
-		self.gold += (thralls_won * THRALL_TO_GOLD_VALUE)
-		
-		# Apply stress reduction on success
-		jarl_manager.apply_raid_result(true)
-
+	# 3. Determine Outcome & Apply Stress 
+	var outcome: String = "Neutral"
+	var loot_multiplier: float = 0.0
+	
+	if total_rsc >= RSC_SUCCESS_THRESHOLD:
+		outcome = "Success"
+		loot_multiplier = 1.0
+		jarl_manager.apply_raid_result(true) # Apply stress reduction 
+	elif total_rsc < RSC_FAILURE_THRESHOLD:
+		outcome = "Failure"
+		loot_multiplier = 0.0
+		jarl_manager.apply_raid_result(false) # Apply stress increase 
 	else:
-		print("RAID FAILED! (RSC: %d)" % rsc)
-		
-		# Check for GDD failure threshold
-		if rsc < 25:
-			jarl_manager.apply_raid_result(false)
-		else:
-			# Raid failed, but not catastrophically, so no stress change.
-			pass 
+		# Neutral outcome (25-49 RSC). Per GDD, no stress change.
+		# PROVISIONAL: GDD is silent on Neutral loot. Defaulting to 50%.
+		outcome = "Neutral"
+		loot_multiplier = 0.5 
 
-	print("Raid complete. Gold: %d, Renown: %d" % [gold, renown])
-	
-	# 4. Tell the GameStateManager to return to the Winter phase
-	if game_state_manager:
-		# This completes the loop, returning control to the management phase.
-		game_state_manager.switch_phase(GameStateManager.GamePhase.WINTER)
-	else:
-		push_error("EconomyManager: GameStateManager reference is not set!")
+	# 4. Calculate Loot & Thralls
+	# We scale rewards based on the RSC (a 51% success is worse than a 90%)
+	var rsc_lerp_factor = float(total_rsc) / 100.0
+	var base_loot = lerp(0.0, float(target_fylki.max_loot_potential), rsc_lerp_factor) [cite: 51]
+	var base_thralls = lerp(float(target_fylki.min_thralls_potential), float(target_fylki.max_thralls_potential), rsc_lerp_factor) [cite: 51, 52]
+	var base_renown = float(BASE_RENOWN_PER_RAID)
 
+	# 5. Apply Jarl's Secondary Trait Modifiers [cite: 59]
+	var loot_mod: float = 1.0
+	var thrall_mod: float = 1.0
+	var renown_mod: float = 1.0
 
-## Calculates the RSC bonus from the Raid Budget.
-## Implements the diminishing returns logic from the GDD.
-func calculate_budget_bonus(budget: int) -> int:
-	if budget <= 0:
-		return 0
+	for trait in jarl_manager.jarl_traits:
+		var effect_percent = float(trait.secondary_effect_percent) / 100.0 [cite: 60]
+		match trait.secondary_effect_type:
+			JarlTrait.SecondaryEffectType.LOOT:
+				loot_mod += effect_percent
+			JarlTrait.SecondaryEffectType.THRALLS:
+				thrall_mod += effect_percent
+			JarlTrait.SecondaryEffectType.RENOWN:
+				renown_mod += effect_percent
+
+	var final_loot: int = roundi(base_loot * loot_multiplier * loot_mod)
+	var final_thralls: int = roundi(base_thralls * loot_multiplier * thrall_mod)
+	var final_renown: int = roundi(base_renown * loot_multiplier * renown_mod)
+
+	# 6. Add Final Resources
+	self.gold += final_loot * LOOT_TO_GOLD_CONVERSION
+	# GDD [cite: 27] says Gold OR Renown. Defaulting to Gold for MVP.
+	self.gold += final_thralls * THRALL_TO_GOLD_CONVERSION 
+	self.renown += final_renown
+
+	# 7. Emit summary and transition phase 
+	var summary = {
+		"outcome": outcome,
+		"total_rsc": total_rsc,
+		"loot_won": final_loot,
+		"thralls_captured": final_thralls,
+		"renown_gained": final_renown,
+		"budget_spent": budget_investment,
+		"target_fylki": target_fylki.fylki_name
+	}
 	
-	# 0-100 Gold: +10% RSC (10G/1%)
-	if budget <= 100:
-		# Using floating point division ensures we get the correct percentage
-		return int(floor(budget / 10.0))
+	raid_completed.emit(summary)
+	print("Raid completed. Outcome: %s (RSC: %d)" % [outcome, total_rsc])
 	
-	# NOTE: GDD only specifies 0-100 Gold.
-	# For now, I will cap the bonus at 10% (100 Gold).
-	# We can add more tiers later.
-	return 10
+	# Tell the GameStateManager to return to the management phase
+	game_state_manager.switch_phase(GameStateManager.GamePhase.WINTER)
+	
+	return summary

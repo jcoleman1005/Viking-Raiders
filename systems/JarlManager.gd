@@ -1,7 +1,7 @@
+# res://systems/JarlManager.gd
 extends Node
 
 # Manages the Jarl's personal stats, particularly Stress and Trait acquisition.
-
 const STRESS_THRESHOLD: int = 70
 const STRESS_ON_SUCCESS: int = -20
 const STRESS_ON_FAILURE: int = 30
@@ -11,7 +11,7 @@ signal trait_acquired(trait_resource) # We'll pass the actual trait resource lat
 signal jarl_is_stressed(jarl_stress: int)
 
 var jarl_name: String = "Harald Bluetooth"
-var jarl_traits: Array = [] # This will hold JarlTrait custom resources
+var jarl_traits: Array = [] # Using a simple Array to avoid class_name parse errors
 
 var stress: int = 25:
 	set(value):
@@ -20,6 +20,7 @@ var stress: int = 25:
 			stress = new_stress
 			stress_changed.emit(stress)
 			print("Jarl stress is now: %d" % stress)
+			
 			if stress >= STRESS_THRESHOLD:
 				jarl_is_stressed.emit(stress)
 				# In a full implementation, this signal would be connected
@@ -52,18 +53,25 @@ func add_trait(trait_resource) -> void:
 		jarl_traits.append(trait_resource)
 		trait_acquired.emit(trait_resource)
 		print("Jarl acquired new trait: %s" % trait_resource.trait_name)
-		# Add logic here to apply the trait's modifiers from the resource
 	else:
 		print("Jarl already has the trait: %s" % trait_resource.trait_name)
 
 
-func get_total_rsc_modifier_from_traits() -> float:
+func get_total_rsc_modifier_from_traits() -> int:
 	"""
 	Calculates the sum of all Raid Success Chance (RSC) modifiers
 	from the Jarl's current traits.
 	"""
-	var total_modifier: float = 0.0
-	for trait in jarl_traits:
-		if trait and trait.has("rsc_modifier"):
-			total_modifier += trait.rsc_modifier
+	var total_modifier: int = 0
+	
+	# REFACTOR: Renamed 'trait' to 'jarl_trait' to avoid keyword conflict.
+	for jarl_trait in jarl_traits:
+		
+		# BUG FIX: Checking for the correct property 'rsc_modifier_percent'
+		if jarl_trait and jarl_trait.has("rsc_modifier_percent"):
+			total_modifier += jarl_trait.rsc_modifier_percent
+		elif jarl_trait and not jarl_trait.has("rsc_modifier_percent"):
+			# This print statement will help us debug if a bad trait resource is added
+			push_warning("JarlManager: Trait '%s' is missing 'rsc_modifier_percent'." % jarl_trait.trait_name)
+			
 	return total_modifier

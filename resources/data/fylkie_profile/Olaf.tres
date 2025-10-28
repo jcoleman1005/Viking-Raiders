@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="FylkiProfile" load_steps=3 format=3 uid="uid://cbvdsfq7c312r"]
+
+[ext_resource type="Script" uid="uid://dltam57miusrn" path="res://resources/data/fylkie_profile/FylkieProfile.gd" id="1_a4ntd"]
+[ext_resource type="Resource" uid="uid://bqwuaaeh78ajm" path="res://resources/data/jarl_traits/Brave.tres" id="1_bccck"]
+
+[resource]
+script = ExtResource("1_a4ntd")
+fylki_name = "Olaf the Brave"
+levy_penalty_rsc = -25
+max_loot_potential = 125
+key_trait = ExtResource("1_bccck")
+metadata/_custom_type_script = "uid://dltam57miusrn"

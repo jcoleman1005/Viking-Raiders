@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="FylkiProfile" load_steps=3 format=3 uid="uid://ckqwei3tnelct"]
+
+[ext_resource type="Resource" uid="uid://dab6trk8426o2" path="res://resources/data/jarl_traits/Cowardly.tres" id="1_kpbb2"]
+[ext_resource type="Script" uid="uid://dltam57miusrn" path="res://resources/data/fylkie_profile/FylkieProfile.gd" id="2_t8y00"]
+
+[resource]
+script = ExtResource("2_t8y00")
+fylki_name = "Harald the Craven"
+key_trait = ExtResource("1_kpbb2")
+metadata/_custom_type_script = "uid://dltam57miusrn"

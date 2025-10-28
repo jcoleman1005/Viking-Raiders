@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="JarlTrait" load_steps=2 format=3 uid="uid://c1eqssya2v758"]
+
+[ext_resource type="Script" uid="uid://rgkr3668opy7" path="res://resources/data/jarl_traits/JarlTrait.gd" id="1_qdytf"]
+
+[resource]
+script = ExtResource("1_qdytf")
+trait_name = "Fanatic"
+rsc_modifier_percent = 5
+secondary_effect_type = 3
+secondary_effect_percent = 20
+metadata/_custom_type_script = "uid://rgkr3668opy7"
