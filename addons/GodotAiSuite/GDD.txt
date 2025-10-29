@@ -1,6 +1,6 @@
 Game Design Document
 Viking Raiders: The Fylki Conflict
-(Version 1.1 - MVP + Config Data)
+(Version 1.2 - Dynasty & Stress Refactor)
 1. Core Concept & Vision
 Viking Raiders is a hybrid Grand Strategy (GS) and Real-Time Strategy (RTS) game. The player manages the high-stakes personal drama and geopolitical conflicts of a Viking dynasty (inspired by Crusader Kings) while funding their expansion through tactical RTS missions (inspired by Age of Empires II).
 The core design philosophy is "Micro-Strategy, Macro-Drama": The outcome of short, tactical RTS missions (the "micro") directly fuels the long-term character drama and geopolitical consequences (the "macro").
@@ -10,9 +10,9 @@ A. The WINTER Phase (Grand Strategy)
 This is the management and preparation phase.
  * Location: The Great Hall (Menu-Driven UI).
  * Core Actions:
-   * Geopolitics: Manage relationships with the 3-5 Rival Fylki (Tribes). Spend resources (Gold, Renown, Thralls) to buy alliances or declare raids.
-   * Raid Planning: Allocate Gold to the Raid Budget (Offensive Power) and the Defense Budget (Survival Power) for the upcoming mission.
-   * Jarl Management: Monitor the Jarl's Stress and permanent Traits, which act as static modifiers on all strategic actions.
+   * Geopolitics: Manage relationships with the 3-5 Rival Fylki (Tribes). Spend resources (Gold, Renown, Thralls) to buy alliances.
+   * Dynasty Management: Manage the Jarl's Stress via the Rite of Blot. Assign Heir Pool members to diplomatic missions.
+   * Raid Planning: Select a raid leader (Jarl or Heir). Allocate Gold to the Raid Budget (Offense) and the Defense Budget (Survival).
 B. The SUMMER Phase (Abstracted RTS - MVP)
 This is the action and consequence phase.
  * Location: Raid Planning Screen / Resolution Screen.
@@ -39,15 +39,25 @@ When a Rival Fylki Capital is conquered (via a successful RTS mission), the Riva
    * Reward: The Fylki is forced into a permanent Allied status.
    * Consequence: The Jarl gains the 'Traitorous' trait, risking a future revolt.
 4. Core System: Jarl & Dynasty
-The Jarl's personality is a static strategic multiplier that the player must plan around.
-A. Jarl Traits
-The Jarl has permanent traits (e.g., Brave, Cowardly) that provide flat bonuses or penalties to the RSC and resource outputs.
+The player's Dynasty is their core strategic asset pool, not just a single character.
+A. Dynasty: The Heir Pool
+The player's Dynasty consists of 1 Jarl (Leader) and 3 Heir Pool Members (e.g., siblings, cousins). This pool of 4 characters is the source of all strategic leadership.
+ * Raid Commanders: In the Raid Planning screen, the player must choose one member of the Dynasty (the Jarl or an Heir) to lead the raid. The leader's personal Trait (e.g., Trait_Brave.tres) is used in the RSC calculation.
+ * Diplomatic Deployment: In the Winter Phase, Heirs not leading a raid can be assigned to a Rival Fylki's court. Their trait provides a bonus or penalty to the Alliance Cost (e.g., a Brave Heir reduces Olaf's Renown cost).
+ * Succession: When the Jarl dies, the player chooses one of the 3 Heir Pool members to become the new Jarl. This provides player agency, as they select the new leader (and their all-important static Trait) from a known pool of assets.
+B. Jarl Traits
+The Jarl (and all Heirs) has permanent traits (e.g., Brave, Cowardly) that provide flat bonuses or penalties to the RSC and diplomatic actions.
  * Example: Trait_Cowardly.tres \rightarrow -15% RSC, -10% Loot Acquired.
- * Drama: The primary drama occurs on Succession, when the old Jarl dies and the new heir is randomly assigned a new set of positive and negative traits.
-B. Jarl Stress
+C. Jarl Stress & Trait Replacement
+This system manages the consequences of failure without creating an un-fun "death spiral."
  * Mechanic: A 0-100 variable tracking the Jarl's mental state.
  * Input: Stress increases based on the Raid Outcome (e.g., Failure = +30 Stress, Success = -10 Stress).
- * Consequence: If Stress exceeds the Threshold (70), the Jarl has a breakdown and gains a new, random Negative Trait (e.g., 'Indecisive', 'Superstitious'), permanently complicating the player's strategy.
+ * Consequence (Trait Replacement): If Stress exceeds the Threshold (70), the Jarl has a breakdown. Their existing Negative Trait is REPLACED by a new, different Negative Trait (e.g., Cowardly is replaced with Indecisive). This keeps the challenge dynamic but solvable.
+D. Jarl Restoration: The Rite of Blot
+This is the player's primary tool for managing Stress and flaws. It is a permanent action available in The Great Hall.
+ * Cost: 200 Gold (preparations) + 5 Thralls (sacrificial value).
+ * Effect 1 (Guaranteed): The Jarl's Stress is immediately reset to 0.
+ * Effect 2 (Chance): There is a 15% chance that the Jarl's current Negative Trait is permanently removed.
 5. Core System: The Economy & Budgets
 The Winter Phase economy is defined by distinct Gold sinks for raid preparation, each with a different strategic purpose and diminishing returns.
 A. Raid Budget (Offense/Velocity)
@@ -72,14 +82,15 @@ D. System Configuration Resources (NEW)
 A. Minimum Viable Product (MVP)
 The MVP will validate the core loop using the Abstracted Raid (RSC calculation) and the Geopolitical Alliance Cost system.
  * Player Actions:
-   * Player manages Gold/Renown/Thralls.
-   * Player spends resources to manage Fylki Alliances.
-   * Player spends Gold on Raid & Defense Budgets.
-   * Player sees their final RSC % (factoring in their Jarl's Trait).
-   * Player executes the raid (math roll).
-   * Player receives resources and Stress consequences.
-   * Player's Jarl gains a new negative trait if Stress exceeds 70.
- * MVP Win Condition: Successfully manage the economy and alliances to defeat (Execute, Ransom, or Vassalize) all 3-5 Rival Fylki.
+   * Manage Gold/Renown/Thralls.
+   * Manage Fylki Alliances (spending resources).
+   * Assign Heir Pool members to diplomatic missions.
+   * Spend Gold on Raid & Defense Budgets.
+   * Select a Raid Leader (Jarl or Heir) for the mission.
+   * Execute the raid (math roll).
+   * Receive resources and Stress consequences.
+   * Manage Jarl's Stress via the Rite of Blot.
+ * MVP Win Condition: Successfully manage the economy, dynasty, and alliances to defeat (Execute, Ransom, or Vassalize) all 3-5 Rival Fylki.
 B. Future Scope (Post-MVP)
  * Full RTS Implementation (Temporary Foothold):
    * Replace the Abstracted Raid with a full, playable RTS mission.
@@ -105,7 +116,7 @@ B. Future Scope (Post-MVP)
    * Data-Driven Design: All stats, costs, and modifiers MUST be stored in custom Resource files (.tres).
    * Core Singletons:
      * GameStateManager.gd (Handles phase transitions)
-     * JarlManager.gd (Handles Traits and Stress)
+     * JarlManager.gd (Handles Traits, Heirs, and Stress)
      * EconomyManager.gd (Handles RSC formula and resource conversion)
    * Project Structure: A clean separation of /scenes, /scripts, /resources, /systems, and /assets.
 A. Architectural Requirements (Data Separation)
