@@ -1,260 +1,118 @@
-Game Design Document: Viking Raiders
-
-Project Lead: Creative Director (Solo Developer)
-Engine: Godot
-Core Genre: Hybrid Grand Strategy (CKII-Lite) & Real-Time Strategy (AoE II-Lite)
-Premise: The player leads a fledgling Viking Dynasty, balancing the high-stakes personal drama of Jarl succession and diplomacy (Winter Phase) with high-risk, logistics-driven raiding (Summer Phase).
-
-1. Architectural & Visual Philosophy
-
-The project is built on a modular, data-driven foundation to prioritize rapid prototyping and content iteration.
-
-A. Architectural Pillars (Godot)
-
-Platform: Godot Engine (Chosen for flexibility in blending genres).
-
-Design Philosophy: Data-Driven Design is paramount. All tunable numerical values and content definitions must be stored in custom Godot Resource files (.tres).
-
-State Management: Core systems rely on isolated Singletons (e.g., JarlManager, GameStateManager) for clear separation of concerns.
-
-B. Visual Direction & Aesthetic
-
-RTS Aesthetic: Low-fidelity, functional 2.5D graphics, reminiscent of classic Age of Empires II, prioritizing unit readability and performance.
-
-UI Differentiation (Saga Tapestry Overlay): The visual language must sharply delineate the two phases:
-
-Winter Phase: Dominated by stylized Saga Tapestry UI elements (thick, wood-grain borders, runic fonts) to emphasize narrative and management.
-
-Summer Phase: Clean, functional UI with high contrast, stripping back the tapestry elements for maximum tactical clarity.
-
-2. Minimum Viable Product (MVP) Core Loop
-
-The MVP's primary goal is to validate the strategic decision loop that links the Winter Phase's character drama (GS) to the Summer Phase's resource output (Raid). The RTS element is initially Abstracted to achieve a fast, low-risk prototype.
-
-A. The Two-Phase Loop
-
-Winter Phase (Grand Strategy): The player uses Gold and Renown to manage Jarl relationships, invest in the Raid Budget, and react to the Jarl's Stress via potential Crisis Events.
-
-Raid Transition (Trigger): The player manually initiates the raid via the Raid Planning Screen, committing resources to a target. The logistical cost (Supplies/Gold) scales with target distance.
-
-Abstracted Summer Phase (Raid Resolution): A single screen resolves the raid instantly based on the calculated Raid Success Chance (RSC).
-
-B. Core Calculation: Raid Success Chance (RSC)
-
-The success of the abstracted raid is determined by a single formula, forcing Winter Phase decisions to matter:
-
-$$\text{RSC} = (\text{Base} + \text{Budget Bonus} + \text{Trait Bonus}) - (\text{Fylki Penalty} \pm \text{Alliance Modifier})$$
-
-C. Jarl Trait Evolution (Stress Mechanic)
-
-Stress Variable: Range 0-100. Starts at 25.
-
-Stress Consequence Threshold: 70. If reached, the Jarl immediately acquires a Negative Trait (e.g., Cowardly), representing a breakdown under pressure.
-
-Stress Inputs:
-
-SUCCESS (RSC $\geq 50\%$): Stress $\rightarrow -20$
-
-FAILURE (RSC $< 25\%$): Stress $\rightarrow +30$
-
-3. Content & Numerical Definitions (MVP Data)
-
-The following data will be implemented in the /resources/data folder using custom Resource scripts.
-
-A. Jarl Traits (Resource: JarlTrait.gd)
-
-Trait Type
-
-Trait Name
-
-RSC Modifier
-
-Secondary Effect
-
-Negative
-
-Cowardly
-
--15%
-
--10% Loot Acquired
-
-Negative
-
-Indecisive
-
--10%
-
--20% Thralls Captured
-
-Negative
-
-Superstitious
-
--5%
-
--20% Renown Obtained
-
-Positive
-
-Brave
-
-+15%
-
-+10% Loot Acquired
-
-Positive
-
-Tactician
-
-+10%
-
-+20% Thralls Captured
-
-Positive
-
-Fanatic
-
-+5%
-
-+20% Renown Obtained
-
-B. Rival Fylki Profiles (Resource: FylkiProfile.gd)
-
-The initial geopolitical setup:
-
-Jarl (Fylki)
-
-Key Trait
-
-Levy Strength (Penalty)
-
-Max Loot Potential
-
-Strategic Use
-
-Olaf the Aggressor
-
-Warlike
-
-High (-25% RSC)
-
-125 Loot
-
-High risk, difficult target/powerful ally.
-
-Sven the Greedy
-
-Greedy
-
-Medium (-10% RSC)
-
-75 Loot
-
-Bribable; liable to break truces without regular payments.
-
-Harald the Craven
-
-Cowardly
-
-Low (0% RSC)
-
-50 Loot
-
-Easy first target, negligible Levy Penalty.
-
-C. Resource & Budget Values
-
-Item
-
-Value
-
-Function
-
-Base Success Chance (RSC)
-
-50%
-
-Baseline risk for any raid.
-
-Starting Gold/Renown
-
-Gold: 300, Renown: 50
-
-Base starting capital.
-
-Loot Conversion
-
-1 Loot $\rightarrow 1$ Gold
-
-Simple conversion rate.
-
-Thrall Value
-
-1 Thrall $\rightarrow 10$ Gold OR 10 Renown
-
-High-value, high-impact resource.
-
-Raid Budget Scaling
-
-0-100 Gold: +10% RSC (10G/1%)
-
-Diminishing returns implemented for investment.
-
-4. Future Scope & Full Implementation
-
-These elements will be introduced after the MVP loop is successfully validated.
-
-A. Full RTS Mechanics (Replacing Abstract Resolution)
-
-RTS Core Loop: Focuses on Smash-and-Grab Logistics. The objective is a single, time-limited scenario: Capture or destroy the target Capital Settlement to trigger victory.
-
-Logistical Constraint: The Longship Fleet/Camp serves as the mobile base and global Loot capacity limit, forcing units to maintain a vulnerable supply line.
-
-Unit Roles:
-
-Hirdman (Warrior): Primary combat, low Loot capacity (Cost: 50 Gold).
-
-Thrall (Worker): Fragile, high Loot capacity, captured in the raid (Cost: 5 Gold).
-
-Jarl (Hero): Player character, high combat power, 0 Loot capacity.
-
-B. Deeper Grand Strategy Systems
-
-The Thing Event Engine: Implement the Thing as the primary council/assembly event trigger for diplomatic and arbitration events, managed via the Saga Tapestry UI.
-
-Religious Conflict: Introduce Pagan/Christian allegiance traits and event chains, leading to unique diplomatic bonuses/penalties with neighboring Frankish or Saxon territories.
-
-Saga Score/Renown Technology: Use Renown to unlock permanent cultural capabilities (e.g., Long-Distance Sailing) that replace a traditional tech tree.
-
-5. Technical Structure (Godot Folder Map)
-
-The project structure ensures modularity and data separation:
-
-/
-├── assets/
-│   ├── ui_tapestry/
-│   ├── sprites/
-│   ├── shaders/
-│   └── audio/
-├── scenes/
-│   ├── gs_winter/        # Core Winter Phase scene
-│   ├── rts_summer/       # Core Summer Phase scene
-│   ├── units/            # Templates for Warrior, Thrall, Longship
-│   └── ui/               # Reusable UI elements
-├── scripts/
-│   ├── components/
-│   └── utilities/
-├── resources/
-│   ├── data/             # All tunable data files (.tres)
-│   │   ├── unit_stats/
-│   │   ├── jarl_traits/
-│   │   └── fylki_profiles/
-│   └── custom_types/     # Custom Resource scripts (.gd) defining the data structure
-│       ├── UnitStats.gd
-│       ├── JarlTrait.gd
-│       └── FylkiProfile.gd
-└── systems/
-	├── GameStateManager.gd   # Manages phase transitions
-	├── JarlManager.gd        # Handles Jarl stats, Stress, and Trait assignment
-	└── EconomyManager.gd     # Handles Gold, Renown, and the Loot conversion
+Game Design Document
+Viking Raiders: The Fylki Conflict
+(Version 1.1 - MVP + Config Data)
+1. Core Concept & Vision
+Viking Raiders is a hybrid Grand Strategy (GS) and Real-Time Strategy (RTS) game. The player manages the high-stakes personal drama and geopolitical conflicts of a Viking dynasty (inspired by Crusader Kings) while funding their expansion through tactical RTS missions (inspired by Age of Empires II).
+The core design philosophy is "Micro-Strategy, Macro-Drama": The outcome of short, tactical RTS missions (the "micro") directly fuels the long-term character drama and geopolitical consequences (the "macro").
+2. Core Game Loop: The Two Phases
+The game alternates between two distinct, turn-based phases, managed from The Great Hall (the player's "Home City" hub).
+A. The WINTER Phase (Grand Strategy)
+This is the management and preparation phase.
+ * Location: The Great Hall (Menu-Driven UI).
+ * Core Actions:
+   * Geopolitics: Manage relationships with the 3-5 Rival Fylki (Tribes). Spend resources (Gold, Renown, Thralls) to buy alliances or declare raids.
+   * Raid Planning: Allocate Gold to the Raid Budget (Offensive Power) and the Defense Budget (Survival Power) for the upcoming mission.
+   * Jarl Management: Monitor the Jarl's Stress and permanent Traits, which act as static modifiers on all strategic actions.
+B. The SUMMER Phase (Abstracted RTS - MVP)
+This is the action and consequence phase.
+ * Location: Raid Planning Screen / Resolution Screen.
+ * Core Action (MVP): The game executes an Abstracted Raid by calculating a Raid Success Chance (RSC) based on all Winter Phase preparations.
+ * Outcome: The result determines the Loot and Thralls acquired and inflicts Stress on the Jarl, creating a direct feedback loop.
+3. Core System: Geopolitics (The Fylki Conflict)
+The primary strategic challenge is managing the 3-5 starting Rival Fylki (Tribes).
+A. Rival Fylki Profiles
+Each rival has a unique profile that dictates their strategic challenge and economic value.
+| Jarl (Tribe) | Key Trait | Levy Strength (RSC Penalty) | Max Loot Potential | Alliance Cost (Per Status Level) |
+|---|---|---|---|---|
+| Olaf the Aggressor | Warlike | High (-25% RSC) | High (125 Loot) | 200 Renown (Demands glory) |
+| Sven the Greedy | Greedy | Medium (-10% RSC) | Medium (75 Loot) | 150 Gold (Demands bribes) |
+| Harald the Craven | Cowardly | Low (0% RSC) | Low (40 Loot) | 10 Thralls (Demands labor) |
+B. Conquest Loop: The Captured Jarl
+When a Rival Fylki Capital is conquered (via a successful RTS mission), the Rival Jarl is Captured. The player must choose their fate:
+ * Execute Jarl:
+   * Reward: High immediate Renown (+400) and Stress reduction (-30).
+   * Consequence (Warlord Succession): The Fylki collapses into a power vacuum. It is replaced by two new, hostile Warlords who are in a state of Feud. This creates a more complex, multi-front diplomatic problem for the player.
+ * Ransom Jarl:
+   * Reward: High immediate Gold influx.
+   * Consequence: The Jarl returns, and the Fylki's Levy Strength increases (they are angry).
+ * Vassalize Jarl:
+   * Reward: The Fylki is forced into a permanent Allied status.
+   * Consequence: The Jarl gains the 'Traitorous' trait, risking a future revolt.
+4. Core System: Jarl & Dynasty
+The Jarl's personality is a static strategic multiplier that the player must plan around.
+A. Jarl Traits
+The Jarl has permanent traits (e.g., Brave, Cowardly) that provide flat bonuses or penalties to the RSC and resource outputs.
+ * Example: Trait_Cowardly.tres \rightarrow -15% RSC, -10% Loot Acquired.
+ * Drama: The primary drama occurs on Succession, when the old Jarl dies and the new heir is randomly assigned a new set of positive and negative traits.
+B. Jarl Stress
+ * Mechanic: A 0-100 variable tracking the Jarl's mental state.
+ * Input: Stress increases based on the Raid Outcome (e.g., Failure = +30 Stress, Success = -10 Stress).
+ * Consequence: If Stress exceeds the Threshold (70), the Jarl has a breakdown and gains a new, random Negative Trait (e.g., 'Indecisive', 'Superstitious'), permanently complicating the player's strategy.
+5. Core System: The Economy & Budgets
+The Winter Phase economy is defined by distinct Gold sinks for raid preparation, each with a different strategic purpose and diminishing returns.
+A. Raid Budget (Offense/Velocity)
+ * Purpose: Early-game offensive power, quick expansion, and capturing Thralls.
+ * Scaling (Diminishing Returns):
+   * 0 \rightarrow 100 Gold: +10\% RSC (Bonus: Increased Thrall Capture).
+   * 101 \rightarrow 200 Gold: +5\% RSC.
+   * 201 \rightarrow 300 Gold: +2.5\% RSC.
+B. Defense Budget (Persistence/Survival)
+ * Purpose: Mid-to-late-game investment in the Temporary Foothold (RTS) mission's survival.
+ * Scaling (Linear Returns, Different Benefits):
+   * 0 \rightarrow 100 Gold: +5\% RSC (Bonus: Reduces RTS building cost).
+   * 101 \rightarrow 200 Gold: +5\% RSC (Bonus: Increases RTS build speed).
+   * 201 \rightarrow 300 Gold: +5\% RSC (Bonus: Increases RTS Temporary Hall HP).
+C. Resource Conversion
+ * Loot: 1 \text{ Loot} \rightarrow 1 \text{ Gold}
+ * Thralls: 1 \text{ Thrall} \rightarrow 10 \text{ Gold} \text{ (Sale) OR } 10 \text{ Renown} \text{ (Diplomacy/Upgrades)}
+D. System Configuration Resources (NEW)
+ * scene_registry.tres: This SceneRegistry resource is loaded by the GameStateManager. It holds all core scene references (e.g., WinterScene.tscn) in PackedScene variables, allowing scenes to be moved or renamed in the editor without breaking the game loop.
+ * jarl_manager_data.tres: This JarlManagerData resource is loaded by the JarlManager. It defines the Jarl's initial state, including their starting_traits (e.g., Brave.tres) and the stress_crisis_trait (e.g., Cowardly.tres) they receive upon reaching the stress threshold.
+6. MVP & Future Scope
+A. Minimum Viable Product (MVP)
+The MVP will validate the core loop using the Abstracted Raid (RSC calculation) and the Geopolitical Alliance Cost system.
+ * Player Actions:
+   * Player manages Gold/Renown/Thralls.
+   * Player spends resources to manage Fylki Alliances.
+   * Player spends Gold on Raid & Defense Budgets.
+   * Player sees their final RSC % (factoring in their Jarl's Trait).
+   * Player executes the raid (math roll).
+   * Player receives resources and Stress consequences.
+   * Player's Jarl gains a new negative trait if Stress exceeds 70.
+ * MVP Win Condition: Successfully manage the economy and alliances to defeat (Execute, Ransom, or Vassalize) all 3-5 Rival Fylki.
+B. Future Scope (Post-MVP)
+ * Full RTS Implementation (Temporary Foothold):
+   * Replace the Abstracted Raid with a full, playable RTS mission.
+   * Objective: Land on a map, gather resources to build a Temporary Hall, and defend it from enemy counter-attacks for a set time before retreating.
+   * Mechanics: Will use UnitStats.gd (Warriors, Thralls) and the Defense Budget bonuses (Build Speed, Hall HP).
+ * Campaign 1: Fylki Unification:
+   * The goal of defeating all Rival Fylki becomes the trigger for Full Unification of the Norse homeland.
+ * Campaign 2: Foreign Conquest (Strategic Subdual):
+   * Once unified, the player can invade foreign lands (e.g., England).
+   * Goal: To establish a Permanent Village, the player must conquer all three strategic nodes in that region:
+     * The Civilian Node (High Thrall Reward)
+     * The Financial Node (High Gold Reward)
+     * The Political Node (High Renown Reward)
+   * Each node requires a full Temporary Foothold (RTS) mission to subdue.
+ * Campaign 3: National Mobilization (Leidang Levy):
+   * Trigger: Unlocked only after Full Unification is complete.
+   * Cost: High Renown (PV: 800) and Gold (PV: 1500+), scaling with total Levy count.
+   * Reward: Grants a massive, one-time army to attack a Foreign Capital (e.g., Paris, Wessex).
+7. Visual & Technical Design
+ * Visuals: Low-fidelity 2.5D graphics (a la Age of Empires II) for the RTS phase.
+ * UI: A "Saga Tapestry" theme (wood-grain, carved borders) for all Winter Phase (GS) menus to visually separate it from the functional RTS UI.
+ * Architecture (Godot):
+   * Data-Driven Design: All stats, costs, and modifiers MUST be stored in custom Resource files (.tres).
+   * Core Singletons:
+     * GameStateManager.gd (Handles phase transitions)
+     * JarlManager.gd (Handles Traits and Stress)
+     * EconomyManager.gd (Handles RSC formula and resource conversion)
+   * Project Structure: A clean separation of /scenes, /scripts, /resources, /systems, and /assets.
+A. Architectural Requirements (Data Separation)
+| Resource Script (/resources/custom_types) | Data Files (/resources/data) | Purpose |
+|---|---|---|
+| JarlTrait.gd | Trait_Brave.tres, etc. | Defines RSC Modifiers and Resource Output Modifiers. |
+| FylkiProfile.gd | Fylki_Olaf.tres, etc. | Defines Levy Strength (RSC Penalty) and Max Loot Potential. |
+| UnitStats.gd | UnitStat_Warrior.tres, etc. | Defines unit costs (used for Raid Budget calculations). |
+| SceneRegistry.gd (NEW) | scene_registry.tres (NEW) | Config: Stores PackedScene references (e.g., WinterScene) to prevent hard-coded paths in the GameStateManager. |
+| JarlManagerData.gd (NEW) | jarl_manager_data.tres (NEW) | Config: Defines the JarlManager's startup data, such as the Jarl's starting_traits and stress_crisis_trait. |
